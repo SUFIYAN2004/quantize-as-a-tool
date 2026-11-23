@@ -1,0 +1,37 @@
+{
+  "model_id": "Qwen/Qwen2.5-0.5B",
+  "budget_pct": 10.0,
+  "bits_requested": "auto",
+  "fp16_size_gb": 0.988,
+  "winner": "int8",
+  "winner_stats": {
+    "ppl_increase_pct": 0.89,
+    "size_gb": 0.63
+  },
+  "attempts": [
+    {
+      "config": "nf4+double_quant",
+      "ppl_increase_pct": 12.92,
+      "size_gb": 0.466,
+      "source": "memory",
+      "verdict": "FAIL"
+    },
+    {
+      "config": "nf4",
+      "ppl_increase_pct": 12.95,
+      "size_gb": 0.451,
+      "source": "memory",
+      "verdict": "FAIL"
+    },
+    {
+      "config": "int8",
+      "ppl_increase_pct": 0.89,
+      "size_gb": 0.63,
+      "source": "memory",
+      "verdict": "PASS"
+    }
+  ],
+  "artifact_dir": "/content/artifacts/Qwen_Qwen2.5-0.5B_10.0",
+  "artifact_sha256": "d77e8101b56bb22c8795327b521cc5e0e26976aadc15fe86a44a3c50f81fc857",
+  "status": "SUCCESS"
+}

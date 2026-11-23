@@ -1,0 +1,30 @@
+{
+  "Qwen/Qwen2.5-0.5B": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 12.92,
+        "size_gb": 0.466
+      },
+      "int8": {
+        "ppl_increase_pct": 0.89,
+        "size_gb": 0.63
+      },
+      "nf4": {
+        "ppl_increase_pct": 12.95,
+        "size_gb": 0.451
+      }
+    },
+    "fp16_ppl": 17.261,
+    "fp16_gb": 0.988
+  },
+  "TinyLlama/TinyLlama-1.1B-Chat-v1.0": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 5.42,
+        "size_gb": 0.747
+      }
+    },
+    "fp16_gb": 2.2,
+    "fp16_ppl": 11.073882567844814
+  }
+}

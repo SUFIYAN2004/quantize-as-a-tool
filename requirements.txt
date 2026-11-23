@@ -1,0 +1,9 @@
+transformers
+accelerate
+bitsandbytes
+huggingface_hub
+safetensors
+datasets
+fastapi
+uvicorn
+pycloudflared

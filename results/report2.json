@@ -1,0 +1,62 @@
+{
+  "budget_10": {
+    "model_id": "Qwen/Qwen2.5-0.5B",
+    "budget_pct": 10.0,
+    "bits_requested": "auto",
+    "fp16_size_gb": 0.988,
+    "winner": "int8",
+    "winner_stats": {
+      "ppl_increase_pct": 0.89,
+      "size_gb": 0.63
+    },
+    "attempts": [
+      {
+        "config": "nf4+double_quant",
+        "ppl_increase_pct": 12.92,
+        "size_gb": 0.466,
+        "source": "memory",
+        "verdict": "FAIL"
+      },
+      {
+        "config": "nf4",
+        "ppl_increase_pct": 12.95,
+        "size_gb": 0.451,
+        "source": "measured",
+        "verdict": "FAIL"
+      },
+      {
+        "config": "int8",
+        "ppl_increase_pct": 0.89,
+        "size_gb": 0.63,
+        "source": "memory",
+        "verdict": "PASS"
+      }
+    ],
+    "artifact_dir": "/content/out_model",
+    "artifact_sha256": "d77e8101b56bb22c8795327b521cc5e0e26976aadc15fe86a44a3c50f81fc857",
+    "status": "SUCCESS"
+  },
+  "budget_15": {
+    "model_id": "Qwen/Qwen2.5-0.5B",
+    "budget_pct": 15.0,
+    "bits_requested": "auto",
+    "fp16_size_gb": 0.988,
+    "winner": "nf4+double_quant",
+    "winner_stats": {
+      "ppl_increase_pct": 12.92,
+      "size_gb": 0.466
+    },
+    "attempts": [
+      {
+        "config": "nf4+double_quant",
+        "ppl_increase_pct": 12.92,
+        "size_gb": 0.466,
+        "source": "memory",
+        "verdict": "PASS"
+      }
+    ],
+    "artifact_dir": "/content/out_model",
+    "artifact_sha256": "897fda92f543bb4184d98d6387e3c729f52cc714943ef2ea6e283ac55f185742",
+    "status": "SUCCESS"
+  }
+}

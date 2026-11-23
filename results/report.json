@@ -1,0 +1,12 @@
+{
+  "model_id": "Qwen/Qwen2.5-0.5B",
+  "config": "int8",
+  "fp16_size_gb": 0.988,
+  "final_size_gb": 0.63,
+  "compression_x": 1.57,
+  "fp16_ppl": 17.261,
+  "final_ppl": 17.415,
+  "ppl_increase_pct": 0.89,
+  "budget_pct": 10.0,
+  "artifact_sha256": "d77e8101b56bb22c8795327b521cc5e0e26976aadc15fe86a44a3c50f81fc857"
+}
