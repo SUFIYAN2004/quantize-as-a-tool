@@ -1,0 +1,7 @@
+api_key.txt
+public_url.txt
+artifacts/
+out_model/
+__pycache__/
+*.safetensors
+.env
