@@ -1,0 +1,15 @@
+{
+  "task": "ARC-Easy",
+  "n": 400,
+  "results": {
+    "Qwen/Qwen2.5-0.5B": {
+      "fp16": 59.2,
+      "nf4+double_quant": 56.2,
+      "int8": 59.2
+    },
+    "TinyLlama/TinyLlama-1.1B-Chat-v1.0": {
+      "fp16": 55.2,
+      "nf4+double_quant": 54.8
+    }
+  }
+}
