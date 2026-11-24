@@ -10,7 +10,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY quantize_service.py serve.py verify_report.py memory.json ./
+COPY quantize_service.py budget_planner.py serve.py verify_report.py memory.json ./
 RUN mkdir -p /content/artifacts
 
 # Measurements, signing key, model cache and artifacts persist here.
