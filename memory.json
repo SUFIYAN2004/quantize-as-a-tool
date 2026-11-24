@@ -46,5 +46,23 @@
     },
     "fp16_gb": 3.087,
     "fp16_ppl": 12.318007407381305
+  },
+  "HuggingFaceTB/SmolLM2-1.7B": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 15.29,
+        "size_gb": 1.007
+      },
+      "nf4": {
+        "ppl_increase_pct": 15.39,
+        "size_gb": 1.007
+      },
+      "int8": {
+        "ppl_increase_pct": 2.64,
+        "size_gb": 1.812
+      }
+    },
+    "fp16_gb": 3.423,
+    "fp16_ppl": 10.851730677071275
   }
 }
