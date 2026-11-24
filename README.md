@@ -223,11 +223,26 @@ Claude Desktop configuration:
 
 Pin `mcp<2`. Version 2 renamed `FastMCP`, and this code targets 1.x. The URL and key change every time the Colab service restarts.
 
+## Run it outside Colab (Docker)
+
+A `Dockerfile`, `docker-compose.yml` and `serve.py` run the same service as a container with a fixed API key (`API_KEY` environment variable), a persistent signing key and a persistent measurement cache. Requires a machine with an NVIDIA GPU and the NVIDIA Container Toolkit.
+
+```bash
+echo "API_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" > .env
+docker compose up -d --build
+curl http://127.0.0.1:8000/health
+```
+
+See [`DEPLOY.md`](DEPLOY.md) for configuration, safe public access (stable tunnel or reverse proxy), what persists, and troubleshooting. **Status:** the container files have been written and syntax-checked but not yet built on a GPU machine.
+
 ## Repository layout
 
 ```
 quantize_service.py        Fetcher, quantizer, validator, memory, signing and API server
 verify_report.py           Standalone verifier for signed reports
+serve.py                   Production entrypoint (env-var API key, no Colab)
+Dockerfile, docker-compose.yml, .dockerignore   Container setup (see DEPLOY.md)
+DEPLOY.md                  Deployment and operations notes
 mcp_server.py              MCP wrapper around the HTTP service
 memory.json                Measured results per model (the cache)
 requirements.txt           Python dependencies
@@ -266,7 +281,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [ ] Task benchmarks built into the service and run on larger samples
 - [ ] GPTQ / AWQ / GGUF formats
 - [x] Signed validation reports (Ed25519)
-- [ ] Stable hosting instead of a temporary tunnel, with a fixed, published signing key
+- [x] Dockerfile and deploy notes (written, not yet tested on a GPU host)
+- [ ] A running, stable deployment with a fixed URL and a published signing key
 
 ## Tech stack
 
