@@ -1,0 +1,29 @@
+{
+  "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+  "budget_pct": 10.0,
+  "bits_requested": "auto",
+  "fp16_size_gb": 2.2,
+  "winner": "nf4+double_quant",
+  "winner_stats": {
+    "ppl_increase_pct": 5.42,
+    "size_gb": 0.747
+  },
+  "attempts": [
+    {
+      "config": "nf4+double_quant",
+      "ppl_increase_pct": 5.42,
+      "size_gb": 0.747,
+      "source": "memory",
+      "verdict": "PASS"
+    }
+  ],
+  "artifact_dir": "/content/artifacts/TinyLlama_TinyLlama-1.1B-Chat-v1.0_10.0",
+  "artifact_sha256": "e1b80ecf33a5b9ade5a896dbb78f4519c9ea57d927bc2c9513ed51322f338897",
+  "status": "SUCCESS",
+  "signed_at": "2026-11-24T06:00:13+00:00",
+  "signature": {
+    "alg": "ed25519",
+    "public_key": "DYCz5sfqGzqV2kH/w/Ft0ZZOFYEFQT9pmijT6J7E1/A=",
+    "value": "7Y0Q+/kUTNTUP5RMLVK8cpHMOPDGNFdIOHPkmJuWBXu9VqHqwiabm506gB3ZQ555e4PQFp2Ps5gb/Af3mJiZCg=="
+  }
+}
