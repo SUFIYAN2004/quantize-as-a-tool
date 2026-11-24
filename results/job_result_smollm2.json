@@ -1,0 +1,41 @@
+{
+  "status": "DONE",
+  "model_id": "HuggingFaceTB/SmolLM2-1.7B",
+  "result": {
+    "model_id": "HuggingFaceTB/SmolLM2-1.7B",
+    "budget_pct": 10.0,
+    "bits_requested": "auto",
+    "fp16_size_gb": 3.423,
+    "winner": "int8",
+    "winner_stats": {
+      "ppl_increase_pct": 2.64,
+      "size_gb": 1.812
+    },
+    "attempts": [
+      {
+        "config": "nf4+double_quant",
+        "ppl_increase_pct": 15.29,
+        "size_gb": 1.007,
+        "source": "measured",
+        "verdict": "FAIL"
+      },
+      {
+        "config": "nf4",
+        "ppl_increase_pct": 15.39,
+        "size_gb": 1.007,
+        "source": "measured",
+        "verdict": "FAIL"
+      },
+      {
+        "config": "int8",
+        "ppl_increase_pct": 2.64,
+        "size_gb": 1.812,
+        "source": "measured",
+        "verdict": "PASS"
+      }
+    ],
+    "artifact_dir": "/content/artifacts/HuggingFaceTB_SmolLM2-1.7B_10.0",
+    "artifact_sha256": "cdf89162c7ad3f32491ed336394dae6d3531a33b7091eda941c702383c153b21",
+    "status": "SUCCESS"
+  }
+}
