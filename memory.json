@@ -64,5 +64,15 @@
     },
     "fp16_gb": 3.423,
     "fp16_ppl": 10.851730677071275
+  },
+  "allenai/OLMo-1B-hf": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 7.21,
+        "size_gb": 0.949
+      }
+    },
+    "fp16_gb": 2.354,
+    "fp16_ppl": 17.462770249911678
   }
 }
