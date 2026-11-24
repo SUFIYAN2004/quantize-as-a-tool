@@ -26,5 +26,15 @@
     },
     "fp16_gb": 2.2,
     "fp16_ppl": 11.073882567844814
+  },
+  "microsoft/phi-2": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 5.94,
+        "size_gb": 1.784
+      }
+    },
+    "fp16_gb": 5.559,
+    "fp16_ppl": 13.93092778387661
   }
 }
