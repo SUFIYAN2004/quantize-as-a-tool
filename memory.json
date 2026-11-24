@@ -36,5 +36,15 @@
     },
     "fp16_gb": 5.559,
     "fp16_ppl": 13.93092778387661
+  },
+  "Qwen/Qwen2.5-1.5B": {
+    "configs": {
+      "nf4+double_quant": {
+        "ppl_increase_pct": 8.66,
+        "size_gb": 1.122
+      }
+    },
+    "fp16_gb": 3.087,
+    "fp16_ppl": 12.318007407381305
   }
 }

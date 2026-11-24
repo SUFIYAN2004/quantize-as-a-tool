@@ -181,12 +181,37 @@ class KeyGate:
     def __init__(self, inner, key):
         self.inner, self.key = inner, key.encode()
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and scope["path"] == "/quantize":
+        if scope["type"] == "http" and (scope["path"] == "/quantize" or scope["path"].startswith("/jobs")):
             supplied = dict(scope["headers"]).get(b"x-api-key", b"")
             if not secrets.compare_digest(supplied, self.key):
                 await JSONResponse({"status": "UNAUTHORIZED"}, status_code=401)(scope, receive, send)
                 return
         await self.inner(scope, receive, send)
+
+
+import uuid
+JOBS = {}
+
+def _run_job(job_id, req):
+    JOBS[job_id]["status"] = "RUNNING"
+    try:
+        JOBS[job_id]["result"] = quantize_endpoint(req)
+        JOBS[job_id]["status"] = "DONE"
+    except Exception as e:
+        JOBS[job_id]["status"] = "FAILED"
+        JOBS[job_id]["error"] = type(e).__name__
+
+@app.post("/jobs")
+def submit_job(req: Req):
+    job_id = uuid.uuid4().hex[:12]
+    JOBS[job_id] = {"status": "QUEUED", "model_id": req.model_id}
+    threading.Thread(target=_run_job, args=(job_id, req), daemon=True).start()
+    return {"job_id": job_id, "status": "QUEUED"}
+
+@app.get("/jobs/{job_id}")
+def job_status(job_id: str):
+    j = JOBS.get(job_id)
+    return j if j else JSONResponse({"status": "NOT_FOUND"}, status_code=404)
 
 def start_service(port=8000, tunnel=True):
     import uvicorn
