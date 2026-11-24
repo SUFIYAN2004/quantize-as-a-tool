@@ -65,6 +65,7 @@ flowchart LR
 | Async jobs | `POST /jobs` returns a job ID instantly and `GET /jobs/{id}` reports progress, so long runs never hit a tunnel timeout |
 | Per-request output | Each request writes to its own artifact folder |
 | Verification | Result includes size, perplexity change and artifact SHA-256 |
+| Signed reports | Every `SUCCESS` or `NO_CONFIG_MET_BUDGET` result is signed with Ed25519, and the public key is served at `GET /public-key` |
 
 ## Quick start (Google Colab, T4 GPU)
 
@@ -140,9 +141,40 @@ Other statuses: `NO_CONFIG_MET_BUDGET` (no format stayed within the budget) and 
 
 Poll `GET /jobs/{job_id}` (same `X-API-Key` header) every 10 to 30 seconds. `status` moves through `QUEUED`, `RUNNING`, then `DONE` or `FAILED`. When `DONE`, the response includes `result`, which has the same shape as the `/quantize` response (a `SUCCESS` result or a `REFUSED` one with flags). An unknown job ID returns `404`.
 
+### `GET /public-key`
+
+Returns `{"alg": "ed25519", "public_key": "<base64>"}`. No API key required.
+
 ### `GET /health`
 
 Returns `{"ok": true}`. No key required.
+
+## Signed validation reports
+
+Each `SUCCESS` and `NO_CONFIG_MET_BUDGET` result carries a `signed_at` timestamp and a `signature` block:
+
+```json
+"signed_at": "2026-11-24T06:00:13+00:00",
+"signature": { "alg": "ed25519", "public_key": "<base64>", "value": "<base64>" }
+```
+
+The signature covers the whole report in canonical JSON (sorted keys, no whitespace), so changing any field invalidates it. A calling agent can check a report without trusting the transport:
+
+```python
+import requests
+from verify_report import verify_report
+
+pub = requests.get(f"{URL}/public-key").json()["public_key"]
+ok = verify_report(report, pub)   # True only if unmodified and signed by this key
+```
+
+[`results/signed_report_tinyllama.json`](results/signed_report_tinyllama.json) is a real signed report you can verify offline. Run `verify_report(report, report["signature"]["public_key"])` to check it.
+
+**What a signature proves, and what it does not**
+- It proves the report was not changed after signing and was signed by the holder of the private key.
+- It does not prove the measurements are correct. It vouches for what the service reported, not for the quality of the evaluation.
+- `verify_report` takes the trusted public key as an argument and does not trust the key embedded in the report, because an attacker could sign a forged report with their own key. Verifying against the report's own key only proves it was not edited.
+- In the Colab setup the signing key is generated fresh each session (`/content/signing_key.pem`), so the key you trust changes every time. A real deployment would keep a fixed key and publish its public half somewhere verifiers already trust. Never commit the private key (`*.pem` is in `.gitignore`).
 
 ## Use it as an MCP tool
 
@@ -179,7 +211,8 @@ Pin `mcp<2`. Version 2 renamed `FastMCP`, and this code targets 1.x. The URL and
 ## Repository layout
 
 ```
-quantize_service.py        Fetcher, quantizer, validator, memory and API server
+quantize_service.py        Fetcher, quantizer, validator, memory, signing and API server
+verify_report.py           Standalone verifier for signed reports
 mcp_server.py              MCP wrapper around the HTTP service
 memory.json                Measured results per model (the cache)
 requirements.txt           Python dependencies
@@ -215,8 +248,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [ ] More architectures (Gemma and larger Llama-family models are gated and need an HF token)
 - [ ] Task benchmarks alongside perplexity
 - [ ] GPTQ / AWQ / GGUF formats
-- [ ] Signed validation reports
-- [ ] Stable hosting instead of a temporary tunnel
+- [x] Signed validation reports (Ed25519)
+- [ ] Stable hosting instead of a temporary tunnel, with a fixed, published signing key
 
 ## Tech stack
 
