@@ -63,10 +63,30 @@ flowchart LR
 | Auth | `/quantize` requires an `X-API-Key` header |
 | GPU lock | Concurrent requests queue instead of fighting over VRAM |
 | Size cap | Models above 3B parameters are refused before any download |
+| Plan before you spend | `POST /plan` answers "which known models fit my size and quality limits?" from the cache, with no GPU, so an agent can decide before it asks for a job |
 | Async jobs | `POST /jobs` returns a job ID instantly and `GET /jobs/{id}` reports progress, so long runs never hit a tunnel timeout |
 | Per-request output | Each request writes to its own artifact folder |
 | Verification | Result includes size, perplexity change and artifact SHA-256 |
 | Signed reports | Every `SUCCESS` or `NO_CONFIG_MET_BUDGET` result is signed with Ed25519, and the public key is served at `GET /public-key` |
+
+## Demo: an agent picks a model for a 1 GB device
+
+[`demo_agent.py`](demo_agent.py) is a small agent with a concrete task: *deploy a chat model to a device with 1 GB for weights, accepting at most 8% perplexity loss.* It uses only the service's HTTP API:
+
+1. `POST /plan` asks which already-measured models fit both limits (cheap, no GPU).
+2. It verifies the plan's signature before trusting it.
+3. It submits the best candidate as a job and polls it.
+4. It checks the signed receipt (status, signature, model, quality loss, size, artifact hash) before deciding.
+5. It confirms that an edited receipt fails verification.
+
+With the measurements in this repository, at an 8% budget and a 1 GB limit, three models fit (Qwen2.5-0.5B as int8, TinyLlama-1.1B and OLMo-1B as 4-bit), Phi-2 and SmolLM2-1.7B are rejected as too big, and Qwen2.5-1.5B is rejected as over budget. The agent picks Qwen2.5-0.5B int8 (+0.89%, 0.63 GB), because it has the lowest quality loss.
+
+```bash
+BUDGET_PCT=8 MAX_SIZE_GB=1.0 QUANTIZE_URL=http://127.0.0.1:8000 \
+QUANTIZE_API_KEY=$KEY python demo_agent.py
+```
+
+The same pattern, an explicit limit, a measured result and a signed receipt the agent checks before acting, applies to other agent actions. Quantization is the first example. In the demo the agent trusts the key the service advertises. A real agent would pin the public key in advance (`TRUSTED_PUBLIC_KEY`).
 
 ## Quick start (Google Colab, T4 GPU)
 
@@ -141,6 +161,16 @@ Other statuses: `NO_CONFIG_MET_BUDGET` (no format stayed within the budget) and 
 ```
 
 Poll `GET /jobs/{job_id}` (same `X-API-Key` header) every 10 to 30 seconds. `status` moves through `QUEUED`, `RUNNING`, then `DONE` or `FAILED`. When `DONE`, the response includes `result`, which has the same shape as the `/quantize` response (a `SUCCESS` result or a `REFUSED` one with flags). An unknown job ID returns `404`.
+
+### `POST /plan`
+
+Header: `X-API-Key: <key>`. Reads only the measurement cache, so it returns instantly and needs no GPU.
+
+```json
+{ "accuracy_budget_pct": 8.0, "max_size_gb": 1.0, "model_ids": ["optional", "subset"] }
+```
+
+Returns `status: "PLAN"` (signed like other reports) with `recommended`, `fits` (best quality first) and `rejected`, each rejection having a `reason` of `too_big`, `over_budget` or `not_measured`. For each model it names the config a job with the same budget would deliver. Sizes are weight memory footprints and exclude activations and the KV cache, so leave headroom on a real device. A plan covers only models that have been measured, so an `over_budget` result with unmeasured formats listed may still be satisfiable by a job.
 
 ### `GET /public-key`
 
@@ -240,6 +270,8 @@ See [`DEPLOY.md`](DEPLOY.md) for configuration, safe public access (stable tunne
 ```
 quantize_service.py        Fetcher, quantizer, validator, memory, signing and API server
 verify_report.py           Standalone verifier for signed reports
+budget_planner.py          Cache-based planner behind POST /plan (pure Python)
+demo_agent.py              Example agent: plan, request, verify receipt, decide
 serve.py                   Production entrypoint (env-var API key, no Colab)
 Dockerfile, docker-compose.yml, .dockerignore   Container setup (see DEPLOY.md)
 DEPLOY.md                  Deployment and operations notes
@@ -262,6 +294,7 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - **Tunnel timeout (mitigated).** Cloudflare quick tunnels drop requests running longer than about 100 seconds. Use `POST /jobs` and poll for any model that is not yet in `memory.json`. The synchronous `/quantize` endpoint is only safe for models already measured. Jobs are held in memory, so a service restart forgets job IDs, although measured results persist in `memory.json`.
 - **Perplexity is a proxy.** A small ARC-Easy check (see above) agrees with it in direction, but covers two models only. It is reliable for comparing formats of the same model, but the absolute values are not comparable with published WikiText-2 numbers because of the shortened evaluation. Task-level benchmarks are the next step.
 - **Gated models untested.** The fetcher refuses gated repos by default. Running Gemma or Llama requires accepting the license (and sometimes waiting for manual approval) on the Hugging Face account, plus a read token stored as a secret, never in code or in the repository.
+- **No artifact download yet.** A job leaves the compressed model on the server (`artifact_dir`), and the signed receipt carries its SHA-256, but the service has no endpoint to fetch it. The demo ends at a verified decision, not a deployment.
 - **Small sample.** Six models, all at or below 3B parameters, on one T4.
 - **bitsandbytes formats only.** NF4 and int8 reduce memory but do not speed up generation. Faster formats (GPTQ, AWQ, GGUF) are not included yet.
 - **Size accounting.** The Qwen 4-bit figure (about 0.47 GB) was measured with a different method from the other rows. The like-for-like figure from the same method as the rest is 0.45 GB for plain NF4.
@@ -274,6 +307,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [x] Per-model memory
 - [x] HTTP API with key auth, GPU lock and size cap
 - [x] MCP server
+- [x] Planning endpoint and demo agent
+- [ ] Artifact download endpoint, and a `plan_models` MCP tool
 - [x] Asynchronous jobs (submit, then poll)
 - [x] Six models across five families tested (Qwen, Llama-style TinyLlama, Phi, SmolLM2, OLMo)
 - [ ] Gated models (Gemma, Llama). The pipeline supports them when the Hugging Face account has been granted access and a token is provided, but access to Gemma was not granted during testing, so no results are claimed
