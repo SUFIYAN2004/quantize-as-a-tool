@@ -28,8 +28,9 @@ Tesla T4, WikiText-2 perplexity (40k tokens, 512-token windows), 10% budget unle
 | TinyLlama-1.1B-Chat | 1.1B | NF4 4-bit | 0.75 GB (vs 2.2 GB) | +5.42% |
 | Qwen2.5-1.5B | 1.5B | NF4 4-bit | 1.12 GB (vs ~3.1 GB) | +8.66% |
 | Phi-2 | 2.7B | NF4 4-bit | 1.78 GB (vs ~5.6 GB) | +5.94% |
+| SmolLM2-1.7B | 1.7B | int8 | 1.81 GB (vs 3.42 GB) | +2.64% |
 
-**Key finding:** the right format depends on the model. On Qwen2.5-0.5B, 4-bit costs +12.9% perplexity and fails a 10% budget, so the service falls back to int8. With a 15% budget the same model accepts 4-bit at about 0.47 GB. On the larger models, 4-bit passes on the first try. Within the Qwen family, the 4-bit penalty shrinks as the model grows (+12.9% at 0.5B, +8.7% at 1.5B). A fixed recipe would either waste space or ship a worse model.
+**Key finding:** the right format depends on the model. On Qwen2.5-0.5B, 4-bit costs +12.9% perplexity and fails a 10% budget, so the service falls back to int8. With a 15% budget the same model accepts 4-bit at about 0.47 GB. On TinyLlama, Qwen2.5-1.5B and Phi-2, 4-bit passes on the first try. SmolLM2-1.7B is a counter-example: 4-bit costs +15.3%, so the service falls back to int8 even though the model is larger than Qwen2.5-0.5B. Within the Qwen family, the 4-bit penalty shrinks as the model grows (+12.9% at 0.5B, +8.7% at 1.5B). Model size alone does not predict which format wins, so a fixed rule such as "use 4-bit above 1B parameters" would have shipped SmolLM2 with a 15% quality loss. Measuring against the budget avoids that. For SmolLM2, a 20% budget would accept 4-bit at about 1.0 GB.
 
 Raw reports are in [`results/`](results/), and every measured configuration is cached in [`memory.json`](memory.json).
 
@@ -197,7 +198,7 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 
 - **Tunnel timeout (mitigated).** Cloudflare quick tunnels drop requests running longer than about 100 seconds. Use `POST /jobs` and poll for any model that is not yet in `memory.json`. The synchronous `/quantize` endpoint is only safe for models already measured. Jobs are held in memory, so a service restart forgets job IDs, although measured results persist in `memory.json`.
 - **Perplexity is a proxy.** It is reliable for comparing formats of the same model, but the absolute values are not comparable with published WikiText-2 numbers because of the shortened evaluation. Task-level benchmarks are the next step.
-- **Small sample.** Four models, all at or below 3B parameters, on one T4.
+- **Small sample.** Five models, all at or below 3B parameters, on one T4.
 - **bitsandbytes formats only.** NF4 and int8 reduce memory but do not speed up generation. Faster formats (GPTQ, AWQ, GGUF) are not included yet.
 - **Size accounting.** The Qwen 4-bit figure (about 0.47 GB) was measured with a different method from the other rows. The like-for-like figure from the same method as the rest is 0.45 GB for plain NF4.
 - **Colab is temporary.** The URL, key, downloaded models and artifacts disappear when the runtime resets. `memory.json` in this repository is what carries the measurements over.
@@ -210,7 +211,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [x] HTTP API with key auth, GPU lock and size cap
 - [x] MCP server
 - [x] Asynchronous jobs (submit, then poll)
-- [ ] More architectures (Gemma, Llama-family) to grow the results table
+- [x] Five models across four families tested (Qwen, Llama-style TinyLlama, Phi, SmolLM2)
+- [ ] More architectures (Gemma and larger Llama-family models are gated and need an HF token)
 - [ ] Task benchmarks alongside perplexity
 - [ ] GPTQ / AWQ / GGUF formats
 - [ ] Signed validation reports
