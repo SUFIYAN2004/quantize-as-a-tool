@@ -1,0 +1,20 @@
+services:
+  quantize:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"   # local only; put a proxy or tunnel in front for public access
+    environment:
+      - API_KEY=${API_KEY:?Set API_KEY in a .env file or your shell}
+    volumes:
+      - quantize-data:/content
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+
+volumes:
+  quantize-data:

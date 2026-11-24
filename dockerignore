@@ -1,0 +1,11 @@
+.git
+*.ipynb
+results/
+__pycache__/
+*.pem
+*.safetensors
+api_key.txt
+public_url.txt
+artifacts/
+out_model/
+.env
