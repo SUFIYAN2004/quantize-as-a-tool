@@ -150,6 +150,20 @@ Returns `{"alg": "ed25519", "public_key": "<base64>"}`. No API key required.
 
 Returns `{"ok": true}`. No key required.
 
+## Task benchmark check (ARC-Easy)
+
+Perplexity is a proxy, so we spot-checked whether the budget tracks real task accuracy. Multiple-choice accuracy on the first 400 ARC-Easy test questions, scored by length-normalised log-likelihood of each answer (a small custom scorer, not `lm-eval`). Raw numbers: [`results/benchmarks_arc.json`](results/benchmarks_arc.json).
+
+| Model | Format | Perplexity change | ARC-Easy accuracy |
+|---|---|---|---|
+| Qwen2.5-0.5B | fp16 | baseline | 59.2% |
+| Qwen2.5-0.5B | NF4 4-bit | +12.9% (fails 10% budget) | 56.2% (-3.0) |
+| Qwen2.5-0.5B | int8 | +0.9% (passes) | 59.2% (0.0) |
+| TinyLlama-1.1B | fp16 | baseline | 55.2% |
+| TinyLlama-1.1B | NF4 4-bit | +5.4% (passes) | 54.8% (-0.4) |
+
+The formats that passed the perplexity budget showed no measurable accuracy change, and the one that failed showed the only visible drop. This is consistent with the budget doing its job, but it is not conclusive: with 400 questions each figure carries roughly +/-2.5 points of noise, only two models were checked, and the scorer is not comparable with published leaderboard numbers. A looser budget is a real trade: accepting Qwen2.5-0.5B 4-bit at 15% costs about 3 points of accuracy here.
+
 ## Signed validation reports
 
 Each `SUCCESS` and `NO_CONFIG_MET_BUDGET` result carries a `signed_at` timestamp and a `signature` block:
@@ -231,7 +245,7 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 ## Known limitations
 
 - **Tunnel timeout (mitigated).** Cloudflare quick tunnels drop requests running longer than about 100 seconds. Use `POST /jobs` and poll for any model that is not yet in `memory.json`. The synchronous `/quantize` endpoint is only safe for models already measured. Jobs are held in memory, so a service restart forgets job IDs, although measured results persist in `memory.json`.
-- **Perplexity is a proxy.** It is reliable for comparing formats of the same model, but the absolute values are not comparable with published WikiText-2 numbers because of the shortened evaluation. Task-level benchmarks are the next step.
+- **Perplexity is a proxy.** A small ARC-Easy check (see above) agrees with it in direction, but covers two models only. It is reliable for comparing formats of the same model, but the absolute values are not comparable with published WikiText-2 numbers because of the shortened evaluation. Task-level benchmarks are the next step.
 - **Gated models untested.** The fetcher refuses gated repos by default. Running Gemma or Llama requires accepting the license (and sometimes waiting for manual approval) on the Hugging Face account, plus a read token stored as a secret, never in code or in the repository.
 - **Small sample.** Six models, all at or below 3B parameters, on one T4.
 - **bitsandbytes formats only.** NF4 and int8 reduce memory but do not speed up generation. Faster formats (GPTQ, AWQ, GGUF) are not included yet.
@@ -248,7 +262,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [x] Asynchronous jobs (submit, then poll)
 - [x] Six models across five families tested (Qwen, Llama-style TinyLlama, Phi, SmolLM2, OLMo)
 - [ ] Gated models (Gemma, Llama). The pipeline supports them when the Hugging Face account has been granted access and a token is provided, but access to Gemma was not granted during testing, so no results are claimed
-- [ ] Task benchmarks alongside perplexity
+- [x] Task benchmark spot-check (ARC-Easy, 2 models)
+- [ ] Task benchmarks built into the service and run on larger samples
 - [ ] GPTQ / AWQ / GGUF formats
 - [x] Signed validation reports (Ed25519)
 - [ ] Stable hosting instead of a temporary tunnel, with a fixed, published signing key
