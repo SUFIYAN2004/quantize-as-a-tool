@@ -171,7 +171,7 @@ def quantize_endpoint(req: Req):
     bits = int(req.bits) if req.bits in ("4", "8") else "auto"
     out_dir = f"/content/artifacts/{req.model_id.replace('/', '_')}_{req.accuracy_budget_pct}"
     with gpu_lock:
-        return quantize_smart(req.model_id, req.accuracy_budget_pct, bits, out_dir)
+        return sign_report(quantize_smart(req.model_id, req.accuracy_budget_pct, bits, out_dir))
 
 @app.get("/health")
 def health():
@@ -212,6 +212,41 @@ def submit_job(req: Req):
 def job_status(job_id: str):
     j = JOBS.get(job_id)
     return j if j else JSONResponse({"status": "NOT_FOUND"}, status_code=404)
+
+
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives import serialization
+import base64, datetime
+
+KEY_PATH = os.environ.get("SIGNING_KEY_PATH", "/content/signing_key.pem")
+
+def _load_signing_key():
+    if os.path.exists(KEY_PATH):
+        return serialization.load_pem_private_key(open(KEY_PATH, "rb").read(), password=None)
+    k = Ed25519PrivateKey.generate()
+    open(KEY_PATH, "wb").write(k.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
+    return k
+
+_SIGN_KEY = _load_signing_key()
+_PUB_B64 = base64.b64encode(_SIGN_KEY.public_key().public_bytes(
+    serialization.Encoding.Raw, serialization.PublicFormat.Raw)).decode()
+
+def _canon(d):
+    return json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
+
+def sign_report(result):
+    if result.get("status") not in ("SUCCESS", "NO_CONFIG_MET_BUDGET"):
+        return result
+    body = {k: v for k, v in result.items() if k != "signature"}
+    body["signed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    sig = _SIGN_KEY.sign(_canon(body))
+    body["signature"] = {"alg": "ed25519", "public_key": _PUB_B64, "value": base64.b64encode(sig).decode()}
+    return body
+
+@app.get("/public-key")
+def public_key():
+    return {"alg": "ed25519", "public_key": _PUB_B64}
 
 def start_service(port=8000, tunnel=True):
     import uvicorn
