@@ -1,0 +1,27 @@
+{
+  "status": "DONE",
+  "model_id": "Qwen/Qwen2.5-1.5B",
+  "result": {
+    "model_id": "Qwen/Qwen2.5-1.5B",
+    "budget_pct": 10.0,
+    "bits_requested": "auto",
+    "fp16_size_gb": 3.087,
+    "winner": "nf4+double_quant",
+    "winner_stats": {
+      "ppl_increase_pct": 8.66,
+      "size_gb": 1.122
+    },
+    "attempts": [
+      {
+        "config": "nf4+double_quant",
+        "ppl_increase_pct": 8.66,
+        "size_gb": 1.122,
+        "source": "measured",
+        "verdict": "PASS"
+      }
+    ],
+    "artifact_dir": "/content/artifacts/Qwen_Qwen2.5-1.5B_10.0",
+    "artifact_sha256": "c96e451d8338d3f2ed76284449aca2e7d9eda679faeaea7324005f53295b9693",
+    "status": "SUCCESS"
+  }
+}
