@@ -1,0 +1,33 @@
+{
+  "status": "DONE",
+  "model_id": "allenai/OLMo-1B-hf",
+  "result": {
+    "model_id": "allenai/OLMo-1B-hf",
+    "budget_pct": 10.0,
+    "bits_requested": "auto",
+    "fp16_size_gb": 2.354,
+    "winner": "nf4+double_quant",
+    "winner_stats": {
+      "ppl_increase_pct": 7.21,
+      "size_gb": 0.949
+    },
+    "attempts": [
+      {
+        "config": "nf4+double_quant",
+        "ppl_increase_pct": 7.21,
+        "size_gb": 0.949,
+        "source": "measured",
+        "verdict": "PASS"
+      }
+    ],
+    "artifact_dir": "/content/artifacts/allenai_OLMo-1B-hf_10.0",
+    "artifact_sha256": "9426300188036f6c0adb2d651121f4cd25f6cc780334636f6957908987c200f0",
+    "status": "SUCCESS",
+    "signed_at": "2026-11-24T06:21:12+00:00",
+    "signature": {
+      "alg": "ed25519",
+      "public_key": "DYCz5sfqGzqV2kH/w/Ft0ZZOFYEFQT9pmijT6J7E1/A=",
+      "value": "/JW7W6fq0A6zxzGW/vK+5P6iKEOXY/iB66cd7dagK2P4ZUMCNUPiKn7Cqj+Bg3XOSl0btgee0paQ6+ef55saBA=="
+    }
+  }
+}
