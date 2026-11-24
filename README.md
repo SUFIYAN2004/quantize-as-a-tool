@@ -26,9 +26,10 @@ Tesla T4, WikiText-2 perplexity (40k tokens, 512-token windows), 10% budget unle
 |---|---|---|---|---|
 | Qwen2.5-0.5B | 0.5B | int8 | 0.63 GB (vs 0.99 GB) | +0.89% |
 | TinyLlama-1.1B-Chat | 1.1B | NF4 4-bit | 0.75 GB (vs 2.2 GB) | +5.42% |
+| Qwen2.5-1.5B | 1.5B | NF4 4-bit | 1.12 GB (vs ~3.1 GB) | +8.66% |
 | Phi-2 | 2.7B | NF4 4-bit | 1.78 GB (vs ~5.6 GB) | +5.94% |
 
-**Key finding:** the right format depends on the model. On Qwen2.5-0.5B, 4-bit costs +12.9% perplexity and fails a 10% budget, so the service falls back to int8. With a 15% budget the same model accepts 4-bit at about 0.47 GB. On the two larger models, 4-bit passes on the first try. A fixed recipe would either waste space or ship a worse model.
+**Key finding:** the right format depends on the model. On Qwen2.5-0.5B, 4-bit costs +12.9% perplexity and fails a 10% budget, so the service falls back to int8. With a 15% budget the same model accepts 4-bit at about 0.47 GB. On the larger models, 4-bit passes on the first try. Within the Qwen family, the 4-bit penalty shrinks as the model grows (+12.9% at 0.5B, +8.7% at 1.5B). A fixed recipe would either waste space or ship a worse model.
 
 Raw reports are in [`results/`](results/), and every measured configuration is cached in [`memory.json`](memory.json).
 
@@ -60,6 +61,7 @@ flowchart LR
 | Auth | `/quantize` requires an `X-API-Key` header |
 | GPU lock | Concurrent requests queue instead of fighting over VRAM |
 | Size cap | Models above 3B parameters are refused before any download |
+| Async jobs | `POST /jobs` returns a job ID instantly and `GET /jobs/{id}` reports progress, so long runs never hit a tunnel timeout |
 | Per-request output | Each request writes to its own artifact folder |
 | Verification | Result includes size, perplexity change and artifact SHA-256 |
 
@@ -127,13 +129,23 @@ Possible flags: `GATED`, `NOT_FOUND`, `TOO_LARGE`, `REMOTE_CODE`, `PICKLE_ONLY`,
 
 Other statuses: `NO_CONFIG_MET_BUDGET` (no format stayed within the budget) and `UNAUTHORIZED` (HTTP 401, missing or wrong key).
 
+### `POST /jobs` and `GET /jobs/{job_id}` (recommended for new models)
+
+`POST /jobs` takes the same body as `/quantize` and returns immediately:
+
+```json
+{ "job_id": "c1cd88e92203", "status": "QUEUED" }
+```
+
+Poll `GET /jobs/{job_id}` (same `X-API-Key` header) every 10 to 30 seconds. `status` moves through `QUEUED`, `RUNNING`, then `DONE` or `FAILED`. When `DONE`, the response includes `result`, which has the same shape as the `/quantize` response (a `SUCCESS` result or a `REFUSED` one with flags). An unknown job ID returns `404`.
+
 ### `GET /health`
 
 Returns `{"ok": true}`. No key required.
 
 ## Use it as an MCP tool
 
-[`mcp_server.py`](mcp_server.py) is a small MCP server that forwards tool calls to the running service. It exposes two tools: `quantize_model(model_id, accuracy_budget_pct, bits)` and `service_health()`.
+[`mcp_server.py`](mcp_server.py) is a small MCP server that forwards tool calls to the running service. It exposes four tools: `submit_quantize_job`, `get_quantize_job`, `quantize_model` (synchronous, for models already measured) and `service_health`. For new models an agent should submit a job and poll it.
 
 Run it on your own machine, since MCP clients such as Claude Desktop launch local processes:
 
@@ -183,9 +195,9 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 
 ## Known limitations
 
-- **Tunnel timeout.** Cloudflare quick tunnels drop requests running longer than about 100 seconds. A model that is not yet in `memory.json` can take several minutes, so the first call may return an empty response. The job still finishes in the background and saves its measurements, so repeating the request returns quickly. Inside Colab, calling `http://127.0.0.1:8000` avoids the limit. An asynchronous submit-and-poll API is planned.
+- **Tunnel timeout (mitigated).** Cloudflare quick tunnels drop requests running longer than about 100 seconds. Use `POST /jobs` and poll for any model that is not yet in `memory.json`. The synchronous `/quantize` endpoint is only safe for models already measured. Jobs are held in memory, so a service restart forgets job IDs, although measured results persist in `memory.json`.
 - **Perplexity is a proxy.** It is reliable for comparing formats of the same model, but the absolute values are not comparable with published WikiText-2 numbers because of the shortened evaluation. Task-level benchmarks are the next step.
-- **Small sample.** Three models, all at or below 3B parameters, on one T4.
+- **Small sample.** Four models, all at or below 3B parameters, on one T4.
 - **bitsandbytes formats only.** NF4 and int8 reduce memory but do not speed up generation. Faster formats (GPTQ, AWQ, GGUF) are not included yet.
 - **Size accounting.** The Qwen 4-bit figure (about 0.47 GB) was measured with a different method from the other rows. The like-for-like figure from the same method as the rest is 0.45 GB for plain NF4.
 - **Colab is temporary.** The URL, key, downloaded models and artifacts disappear when the runtime resets. `memory.json` in this repository is what carries the measurements over.
@@ -197,7 +209,7 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [x] Per-model memory
 - [x] HTTP API with key auth, GPU lock and size cap
 - [x] MCP server
-- [ ] Asynchronous jobs (submit, then poll) to remove the tunnel timeout
+- [x] Asynchronous jobs (submit, then poll)
 - [ ] More architectures (Gemma, Llama-family) to grow the results table
 - [ ] Task benchmarks alongside perplexity
 - [ ] GPTQ / AWQ / GGUF formats
