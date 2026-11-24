@@ -154,6 +154,7 @@ def verify_artifact(artifact_dir, expected_sha256):
 from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
+from budget_planner import plan_from_memory
 
 app = FastAPI(title="Quantize-as-a-tool")
 gpu_lock = threading.Lock()
@@ -177,11 +178,22 @@ def quantize_endpoint(req: Req):
 def health():
     return {"ok": True}
 
+class PlanReq(BaseModel):
+    accuracy_budget_pct: float = 10.0
+    max_size_gb: float | None = None
+    model_ids: list[str] | None = None
+
+@app.post("/plan")
+def plan_endpoint(req: PlanReq):
+    """Cheap, GPU-free: which already-measured models fit these limits?"""
+    return sign_report(plan_from_memory(mem_load(), req.accuracy_budget_pct,
+                                        req.max_size_gb, req.model_ids))
+
 class KeyGate:
     def __init__(self, inner, key):
         self.inner, self.key = inner, key.encode()
     async def __call__(self, scope, receive, send):
-        if scope["type"] == "http" and (scope["path"] == "/quantize" or scope["path"].startswith("/jobs")):
+        if scope["type"] == "http" and (scope["path"] in ("/quantize", "/plan") or scope["path"].startswith("/jobs")):
             supplied = dict(scope["headers"]).get(b"x-api-key", b"")
             if not secrets.compare_digest(supplied, self.key):
                 await JSONResponse({"status": "UNAUTHORIZED"}, status_code=401)(scope, receive, send)
@@ -236,7 +248,7 @@ def _canon(d):
     return json.dumps(d, sort_keys=True, separators=(",", ":")).encode()
 
 def sign_report(result):
-    if result.get("status") not in ("SUCCESS", "NO_CONFIG_MET_BUDGET"):
+    if result.get("status") not in ("SUCCESS", "NO_CONFIG_MET_BUDGET", "PLAN"):
         return result
     body = {k: v for k, v in result.items() if k != "signature"}
     body["signed_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
