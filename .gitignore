@@ -5,3 +5,4 @@ out_model/
 __pycache__/
 *.safetensors
 .env
+*.pem
