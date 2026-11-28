@@ -219,6 +219,7 @@ ok = verify_report(report, pub)   # True only if unmodified and signed by this k
 - It proves the report was not changed after signing and was signed by the holder of the private key.
 - It does not prove the measurements are correct. It vouches for what the service reported, not for the quality of the evaluation.
 - `verify_report` takes the trusted public key as an argument and does not trust the key embedded in the report, because an attacker could sign a forged report with their own key. Verifying against the report's own key only proves it was not edited.
+- The canonical form follows Python's `json.dumps(sort_keys=True, separators=(",", ":"))`. A verifier or proxy in another language that re-serialises `10.0` as `10` will make a valid signature fail, so verify the report exactly as received or reproduce Python's formatting.
 - In the Colab setup the signing key is generated fresh each session (`/content/signing_key.pem`), so the key you trust changes every time. A real deployment would keep a fixed key and publish its public half somewhere verifiers already trust. Never commit the private key (`*.pem` is in `.gitignore`).
 
 ## Use it as an MCP tool
@@ -265,12 +266,36 @@ curl http://127.0.0.1:8000/health
 
 See [`DEPLOY.md`](DEPLOY.md) for configuration, safe public access (stable tunnel or reverse proxy), what persists, and troubleshooting. **Status:** the container files have been written and syntax-checked but not yet built on a GPU machine.
 
+## Tests
+
+The suite needs no GPU, no network and no model downloads. The heavy libraries are mocked, and the tests use a temporary signing key and measurement cache, so they never touch your real ones.
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest -q        # or: python -m unittest discover -s tests -t .
+```
+
+What is covered:
+- **Planner:** which models fit, rejection reasons, inclusive boundaries, sort order, and that it never modifies the cache.
+- **Quantizer logic** (with fake models): fallback from 4-bit to int8, stopping at the first passing format, `NO_CONFIG_MET_BUDGET`, the `bits` option, measurement reuse, and that the planner and quantizer always agree on the chosen format.
+- **Signing:** valid reports verify; edits, moved signatures, malformed signatures and reports signed by another key are all rejected.
+- **API-key gate:** every protected route needs the key and every public route stays open.
+- **Fetcher:** remote code, pickle-only, already-quantized, gated and oversized models are refused, and fetch errors become clean refusals.
+- **Endpoints and jobs:** refusals, signed results, per-request folders, job success and failure, unknown job IDs.
+- **Repository checks** (`tests/test_repo.py`): the README's results table and the demo claim match `memory.json`, README links and Dockerfile `COPY` targets exist, `.dockerignore` and `*.pem` in `.gitignore` are present, no secrets or private keys are committed, notebooks carry no widget state, `serve.py` refuses a missing or short API key, and the signature verifier returns `False` (never raises) on malformed input.
+- **HTTP wiring** (`tests/test_http.py`): the same routes through FastAPI. These tests skip themselves when `fastapi` and `httpx` are not installed.
+
+These tests check the decision logic, not real quantization quality. Running actual models on a GPU is covered by the measured results above, not by the test suite.
+
 ## Repository layout
 
 ```
 quantize_service.py        Fetcher, quantizer, validator, memory, signing and API server
 verify_report.py           Standalone verifier for signed reports
+tests/, requirements-dev.txt   Automated tests (no GPU needed), see Tests above
 budget_planner.py          Cache-based planner behind POST /plan (pure Python)
+tests/                     Test suite (no GPU or network needed)
+requirements-dev.txt       Dependencies for running the tests
 demo_agent.py              Example agent: plan, request, verify receipt, decide
 serve.py                   Production entrypoint (env-var API key, no Colab)
 Dockerfile, docker-compose.yml, .dockerignore   Container setup (see DEPLOY.md)
@@ -308,6 +333,8 @@ quantize_as_a_tool.ipynb   Development notebook (build log)
 - [x] HTTP API with key auth, GPU lock and size cap
 - [x] MCP server
 - [x] Planning endpoint and demo agent
+- [x] Automated tests for the decision logic (the real-model path is covered by the measured results, not the suite)
+- [x] Automated test suite (no GPU needed)
 - [ ] Artifact download endpoint, and a `plan_models` MCP tool
 - [x] Asynchronous jobs (submit, then poll)
 - [x] Six models across five families tested (Qwen, Llama-style TinyLlama, Phi, SmolLM2, OLMo)

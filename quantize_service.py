@@ -68,7 +68,7 @@ def _fetch_raw(model_id):
         "architecture": (cfg.get("architectures") or ["?"])[0],
         "params_millions": round(params / 1e6, 1) if params else None,
         "flags": flags,
-        "safe_to_proceed": not any(x.startswith(("REMOTE_CODE", "PICKLE_ONLY", "GATED")) for x in flags),
+        "safe_to_proceed": not any(x.startswith(("REMOTE_CODE", "PICKLE_ONLY", "GATED", "ALREADY_QUANTIZED")) for x in flags),
     }
 
 def fetch_model_report(model_id):
@@ -96,11 +96,15 @@ def build_ladder():
     ]
 
 def mem_load():
-    return json.load(open(MEM)) if os.path.exists(MEM) else {}
+    if not os.path.exists(MEM):
+        return {}
+    with open(MEM) as f:
+        return json.load(f)
 
 def mem_save(m):
     os.makedirs(os.path.dirname(MEM), exist_ok=True)
-    json.dump(m, open(MEM, "w"), indent=2)
+    with open(MEM, "w") as f:
+        json.dump(m, f, indent=2)
 
 def quantize_smart(model_id, budget=10.0, bits="auto", out_dir="/content/out_model"):
     mem = mem_load()
